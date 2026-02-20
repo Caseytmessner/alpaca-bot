@@ -136,7 +136,8 @@ bars = get_bars(symbol)
 price = bars["close"].iloc[-1]
 qty = round(trade_value / price, 6)
 if qty <= 0:
-print(" return
+print("Bot is halted for the day.") 
+return
 Skipping " + symbol + " - qty too small")
 order = MarketOrderRequest(
 symbol=position_symbol,
