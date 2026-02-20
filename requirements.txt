@@ -2,3 +2,4 @@ alpaca-py
 schedule
 pandas
 numpy
+pytz
