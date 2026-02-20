@@ -62,7 +62,7 @@ def check_thresholds():
 global halted
 equity = get_equity()
 pct_change = (equity - starting_equity) / starting_equity * 100
-    print("  Equity: $" + str(round(equity, 2)) + " (" + str(round(pct_change, 2)) + "% today)")
+print(" Equity: $" + str(round(equity, 2)) + " (" + str(round(pct_change, 2)) + "% today
 if equity <= starting_equity * (1 - LOSS_FLOOR_PCT):
 print("LOSS FLOOR HIT - closing all positions and halting for the day.")
 close_all_positions_and_orders()
