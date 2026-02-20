@@ -1,6 +1,7 @@
+import os
 import time
 import schedule
-from datetime import datetime, timezone
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from alpaca.trading.client import TradingClient
@@ -16,16 +17,14 @@ from alpaca.data.timeframe import TimeFrame
 
 # —————————————————————
 
-import os
-API_KEY = os.environ.get("ALPACA_API_KEY")
-SECRET_KEY = os.environ.get("ALPACA_SECRET_KEY")
-
-PAPER = True  # Set to False for live trading
+API_KEY = os.environ.get(“ALPACA_API_KEY”)
+SECRET_KEY = os.environ.get(“ALPACA_SECRET_KEY”)
+PAPER = True
 
 SYMBOLS = [“BTC/USD”, “ETH/USD”]
-RISK_PER_TRADE = 0.05       # 5% of account per trade
-LOSS_FLOOR_PCT = 0.10       # Stop + close all if down 10% on the day
-PROFIT_CEILING_PCT = 0.25   # Stop + close all if up 25% on the day
+RISK_PER_TRADE = 0.05
+LOSS_FLOOR_PCT = 0.10
+PROFIT_CEILING_PCT = 0.25
 FAST_EMA = 9
 SLOW_EMA = 21
 RSI_PERIOD = 14
@@ -61,7 +60,6 @@ def get_equity():
 return float(trading_client.get_account().equity)
 
 def close_all_positions_and_orders():
-“”“Cancel all open orders, then close every open position.”””
 print(”  Cancelling all open orders…”)
 trading_client.cancel_orders()
 
@@ -74,9 +72,9 @@ if not positions:
 for position in positions:
     try:
         trading_client.close_position(position.symbol)
-        print(f"  ✓ Closed position: {position.symbol} ({position.qty} units)")
+        print("  Closed position: " + position.symbol)
     except Exception as e:
-        print(f"  ✗ Could not close {position.symbol}: {e}")
+        print("  Could not close " + position.symbol + ": " + str(e))
 ```
 
 # —————————————————————
@@ -86,28 +84,21 @@ for position in positions:
 # —————————————————————
 
 def check_thresholds():
-“””
-Check whether the daily loss floor or profit ceiling has been hit.
-If either is triggered, close all positions/orders and halt for the day.
-Returns True if halted, False otherwise.
-“””
 global halted
 
 ```
 equity = get_equity()
 pct_change = (equity - starting_equity) / starting_equity * 100
 
-print(f"  Equity: ${equity:.2f} ({pct_change:+.2f}% today)")
+print("  Equity: $" + str(round(equity, 2)) + " (" + str(round(pct_change, 2)) + "% today)")
 
 if equity <= starting_equity * (1 - LOSS_FLOOR_PCT):
-    print(f"\n⛔ LOSS FLOOR HIT — down {LOSS_FLOOR_PCT*100:.0f}%")
-    print(f"   Closing all positions and halting for the day...")
+    print("LOSS FLOOR HIT - closing all positions and halting for the day.")
     close_all_positions_and_orders()
     halted = True
 
 elif equity >= starting_equity * (1 + PROFIT_CEILING_PCT):
-    print(f"\n🏆 PROFIT CEILING HIT — up {PROFIT_CEILING_PCT*100:.0f}%")
-    print(f"   Locking in gains and halting for the day...")
+    print("PROFIT CEILING HIT - locking in gains and halting for the day.")
     close_all_positions_and_orders()
     halted = True
 
@@ -164,8 +155,10 @@ fast = compute_ema(close, FAST_EMA)
 slow = compute_ema(close, SLOW_EMA)
 rsi = compute_rsi(close, RSI_PERIOD)
 
-prev_fast, curr_fast = fast.iloc[-2], fast.iloc[-1]
-prev_slow, curr_slow = slow.iloc[-2], slow.iloc[-1]
+prev_fast = fast.iloc[-2]
+curr_fast = fast.iloc[-1]
+prev_slow = slow.iloc[-2]
+curr_slow = slow.iloc[-1]
 curr_rsi = rsi.iloc[-1]
 
 bullish_cross = prev_fast <= prev_slow and curr_fast > curr_slow
@@ -202,7 +195,7 @@ price = bars["close"].iloc[-1]
 qty = round(trade_value / price, 6)
 
 if qty <= 0:
-    print(f"    Skipping {symbol} — calculated qty too small")
+    print("    Skipping " + symbol + " - qty too small")
     return
 
 order = MarketOrderRequest(
@@ -212,7 +205,7 @@ order = MarketOrderRequest(
     time_in_force=TimeInForce.GTC
 )
 trading_client.submit_order(order)
-print(f"    ✓ {side} {qty} {symbol} @ ~${price:.2f}")
+print("    " + str(side) + " " + str(qty) + " " + symbol + " at ~$" + str(round(price, 2)))
 ```
 
 # —————————————————————
@@ -226,22 +219,21 @@ global halted
 
 ```
 if halted:
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Bot is halted for the day — skipping.")
+    print("[" + datetime.now().strftime("%H:%M:%S") + "] Bot is halted for the day.")
     return
 
-print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Running strategy...")
+print("\n[" + datetime.now().strftime("%H:%M:%S") + "] Running strategy...")
 
-# Check thresholds before doing anything
 if check_thresholds():
     return
 
 equity = get_equity()
 
 for symbol in SYMBOLS:
-    print(f"  Checking {symbol}...")
+    print("  Checking " + symbol + "...")
     signal, rsi = get_signal(symbol)
     held_qty = get_position_qty(symbol)
-    print(f"    Signal: {signal} | RSI: {rsi:.1f} | Held: {held_qty}")
+    print("    Signal: " + signal + " | RSI: " + str(round(rsi, 1)) + " | Held: " + str(held_qty))
 
     if signal == "BUY" and held_qty == 0:
         place_order(symbol, OrderSide.BUY, equity)
@@ -255,9 +247,8 @@ for symbol in SYMBOLS:
             time_in_force=TimeInForce.GTC
         )
         trading_client.submit_order(order)
-        print(f"    ✓ SELL full position: {held_qty} {symbol}")
+        print("    SELL full position: " + str(held_qty) + " " + symbol)
 
-    # Check thresholds again after each trade
     if check_thresholds():
         return
 ```
@@ -274,12 +265,12 @@ halted = False
 starting_equity = get_equity()
 floor = starting_equity * (1 - LOSS_FLOOR_PCT)
 ceiling = starting_equity * (1 + PROFIT_CEILING_PCT)
-print(f”\n{’=’*50}”)
-print(f”🟢 New day started — {datetime.now().strftime(’%Y-%m-%d’)}”)
-print(f”   Starting equity : ${starting_equity:.2f}”)
-print(f”   Loss floor      : ${floor:.2f}  (-{LOSS_FLOOR_PCT*100:.0f}%)”)
-print(f”   Profit ceiling  : ${ceiling:.2f}  (+{PROFIT_CEILING_PCT*100:.0f}%)”)
-print(f”{’=’*50}”)
+print(”==================================================”)
+print(“New day started - “ + datetime.now().strftime(”%Y-%m-%d”))
+print(“Starting equity : $” + str(round(starting_equity, 2)))
+print(“Loss floor      : $” + str(round(floor, 2)) + “  (-10%)”)
+print(“Profit ceiling  : $” + str(round(ceiling, 2)) + “  (+25%)”)
+print(”==================================================”)
 
 # —————————————————————
 
@@ -291,13 +282,10 @@ if **name** == “**main**”:
 reset_daily()
 
 ```
-# Run strategy every 15 minutes
 schedule.every(15).minutes.do(run_strategy)
-
-# Reset state at midnight UTC each day
 schedule.every().day.at("00:01").do(reset_daily)
 
-print("Bot running... Press Ctrl+C to stop.\n")
+print("Bot running...\n")
 while True:
     schedule.run_pending()
     time.sleep(30)
