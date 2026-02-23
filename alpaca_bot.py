@@ -149,7 +149,8 @@ print("Checking " + symbol)
 try:
 signal, strength, rsi = get_signal(symbol)
 held_qty = get_position_qty(symbol)
-print("Signal: " + signal + " [" + strength + "] RSI: " + str(round(rsi, 1)) + "
+rsi_str = str(round(rsi, 1))
+            print("Signal: " + signal + " Strength: " + strength + " RSI: " + rsi_str + " Held: " + str(held_qty))
 if signal == "BUY" and held_qty == 0:
 place_order(symbol, OrderSide.BUY, equity, strength)
 elif signal == "SELL" and held_qty > 0:
